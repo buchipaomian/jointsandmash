@@ -1,3 +1,4 @@
+#coding=utf-8
 import cv2
 import numpy as np
 import math
@@ -11,6 +12,8 @@ import matplotlib.collections
 
 from simple_weight import *
 from datetime import datetime
+
+import random as rand
 """
 
 点的生成抄了大佬的项目
@@ -49,6 +52,26 @@ def findPointsFromImage(img, factor):
                 points.append([col, row])
     return points
 
+def pure_net_format(count,width,height):
+    points = []
+    l = float(width)/float(height)
+    print(count/l)
+    k = int(math.sqrt(count/l))
+    print(k)
+    distance = height//k
+    for i in range(k):
+        for j in range(int(k*l)):
+            points.append([j*distance,i*distance])
+    return points,distance
+
+def generateRandomPoints(count, sizeX, sizeY):
+    points = []
+    for i in range(count):
+        p = [rand.randint(0,sizeX),rand.randint(0,sizeY)]
+        if not p in points:
+            points.append(p)
+    # # print "Punkte generieren: %.2fs" % (time.clock()-start)
+    return points
 
 def generate_mash_2d(img,result_file_name,masks=None,point_list=None):
     (colorIm, blackIm) = loadAndFilterImage(img)
@@ -59,7 +82,16 @@ def generate_mash_2d(img,result_file_name,masks=None,point_list=None):
     而生成的点是(x,y)即(w,h)的格式
     还有，记得要删除所有的中文注释，因为有些情况下中文注释在服务器上会报错
     """
-    temp_points = findPointsFromImage(blackIm, 2.1)#To-do:这个2.1算是个按照比例去求随机点的方法,2.1的时候边缘生成点的比例接近0.45
+    #下面的是依托边缘生成点
+    # temp_points = findPointsFromImage(blackIm, 2.1)#To-do:这个2.1算是个按照比例去求随机点的方法,2.1的时候边缘生成点的比例接近0.45
+    #下面的是过去的大佬搞得纯随机
+    h,w = img.shape[:2]
+    temp_points = generateRandomPoints(1500, w-1, h-1)#原作者用的pil，所以差1
+    # 下面的是没有随机直接上网格
+    # h,w = img.shape[:2]
+    # temp_points,_ = pure_net_format(2000,w,h)#2000约等于密度
+
+
     final_points = []
     #filter points
     if masks is not None:
@@ -112,7 +144,12 @@ def decide_belong_to(points,triangles,point_list):
         result[k] = []
     print(weight_result)
     for i,p in enumerate(points):
-        weights = [m[i] for m in weight_result]
+        weights = []
+        for m in weight_result:
+            if i in m.keys():
+                weights.append(m[i])
+            else:
+                weights.append(9999)
         min_weight = min(weights)
         result[weights.index(min_weight)].append(p)
 
@@ -133,12 +170,12 @@ if __name__ == "__main__":
     #下面就是输出看一下结果，这个decide结果就是一个length和关节点数量一样的，按照给定的关节点顺序给出每个点的点集
     print("#################################")
     print(datetime.now())
-    print(desice_result)
+    # print(deside_result)
 
     colors = [(255,182,193),(0,0,255),(255,255,0)]
     for i,k in enumerate(decide_result):
         for m in k:
-            cv2.circle(res_img,(m[0],m[1]),10,colors[i],3)
+            cv2.circle(res_img,(m[0],m[1]),3,colors[i],3)
     cv2.namedWindow('img',0)
     cv2.imshow('img',res_img)
     cv2.waitKey()
