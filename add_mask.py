@@ -100,6 +100,10 @@ def generate_mash_2d(img,result_file_name,masks=None,point_list=None):
     return result,final_points,triangles
 
 def decide_belong_to(points,triangles,point_list):
+    """
+    这个会引用simple_weight.py里面计算权重的部分
+    points是meshpoint，point_list是关节点
+    """
     weight_result = []
     result = {}
     for p in point_list:
@@ -115,29 +119,6 @@ def decide_belong_to(points,triangles,point_list):
     return list(result.values())
 
 
-
-def find_mask_points(mask):
-    """
-    大体思路是这样的：
-    1、找到mask的轮廓，由于mask是二值化的结果，所以轮廓会非常准确
-    2、将轮廓上的点放置在点阵中
-    3、使用这个点生成出来三角
-    4、把轮廓上的点全部去掉，与其相关的三角也去掉
-    5、效果可能会不太好（边缘出现锯齿），但影响应该不大，尤其是我们实际使用的时候mask会比真实的图片区域略大
-
-
-    这样做快是快了，但问题太多，抛弃了
-    """
-    contours, hierarchy = cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    result = contours[0]#这个边缘包括超多点，这里仅采用其中的十分之一
-    special_points = []
-    for k in result:
-        a = np.random.randint(10)
-        if a == 5:
-            special_points.append(k[0])
-    return special_points
-
-
 if __name__ == "__main__":
     input_img_name = "cut.png"
     res_img = cv2.imread(input_img_name,cv2.IMREAD_UNCHANGED)
@@ -148,12 +129,14 @@ if __name__ == "__main__":
     result,final_points,triangles = generate_mash_2d(imput_img,result_file_name,mask_channel,point_list)
     print(datetime.now())
     #接下来就是决定谁拿哪个点的时刻，第一步是计算每一个点的权重
-    desice_result = decide_belong_to(final_points,triangles,point_list)
+    decide_result = decide_belong_to(final_points,triangles,point_list)
+    #下面就是输出看一下结果，这个decide结果就是一个length和关节点数量一样的，按照给定的关节点顺序给出每个点的点集
     print("#################################")
     print(datetime.now())
     print(desice_result)
+
     colors = [(255,182,193),(0,0,255),(255,255,0)]
-    for i,k in enumerate(desice_result):
+    for i,k in enumerate(decide_result):
         for m in k:
             cv2.circle(res_img,(m[0],m[1]),10,colors[i],3)
     cv2.namedWindow('img',0)
